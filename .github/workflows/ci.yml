@@ -1,0 +1,197 @@
+# CI Pipeline — Build, Test, Lint
+# Update the commands below to match your project's stack.
+# See CLAUDE.md for project-specific build/test/lint commands.
+
+name: CI
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    # Uncomment and configure for your stack:
+    # strategy:
+    #   matrix:
+    #     node-version: [18, 20]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- Node.js Setup (uncomment for JS/TS projects) ---
+      # - name: Setup Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: 20
+      #     cache: 'npm'
+      #
+      # - name: Install dependencies
+      #   run: npm ci
+      #
+      # - name: Lint
+      #   run: npm run lint
+      #
+      # - name: Type check
+      #   run: npm run type-check
+      #
+      # - name: Build
+      #   run: npm run build
+      #
+      # - name: Test
+      #   run: npm test
+
+      # --- Python Setup (uncomment for Python projects) ---
+      # - name: Setup Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.12'
+      #     cache: 'pip'
+      #
+      # - name: Install dependencies
+      #   run: pip install -r requirements.txt
+      #
+      # - name: Lint
+      #   run: ruff check .
+      #
+      # - name: Type check
+      #   run: mypy .
+      #
+      # - name: Test
+      #   run: pytest
+
+      # --- Go Setup (uncomment for Go projects) ---
+      # - name: Setup Go
+      #   uses: actions/setup-go@v5
+      #   with:
+      #     go-version: '1.22'
+      #
+      # - name: Lint
+      #   uses: golangci/golangci-lint-action@v4
+      #
+      # - name: Build
+      #   run: go build ./...
+      #
+      # - name: Test
+      #   run: go test ./...
+
+      - name: Placeholder
+        run: echo "Configure CI steps above for your stack. See CLAUDE.md."
+
+  # Uncomment for dependency security scanning
+  # security:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Audit dependencies
+  #       run: npm audit --audit-level=high
+
+  # Health check after deployment to main
+  # Uncomment and configure HEALTH_URL for your project
+  # health-check:
+  #   runs-on: ubuntu-latest
+  #   needs: build-and-test
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   steps:
+  #     - name: Wait for deployment
+  #       run: sleep 30
+  #
+  #     - name: Health check
+  #       env:
+  #         HEALTH_URL: ${{ vars.HEALTH_URL || 'http://localhost:3000/health' }}
+  #       run: |
+  #         echo "Checking health at $HEALTH_URL"
+  #         for i in 1 2 3; do
+  #           status=$(curl -sf -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo "000")
+  #           if [ "$status" = "200" ]; then
+  #             echo "Health check passed (attempt $i)"
+  #             exit 0
+  #           fi
+  #           echo "Health check failed with status $status (attempt $i/3)"
+  #           sleep 10
+  #         done
+  #         echo "Health check failed after 3 attempts"
+  #         exit 1
+
+  # Auto-rollback when health check fails
+  # Uncomment to enable automatic rollback on failed health checks
+  # auto-rollback:
+  #   runs-on: ubuntu-latest
+  #   needs: health-check
+  #   if: failure()
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #
+  #     - name: Get previous tag
+  #       id: prev_tag
+  #       run: |
+  #         PREV_TAG=$(git tag --sort=-v:refname | head -2 | tail -1)
+  #         echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+  #         echo "Previous stable tag: $PREV_TAG"
+  #
+  #     - name: Revert to previous tag
+  #       run: |
+  #         git checkout ${{ steps.prev_tag.outputs.tag }}
+  #         # Add your deploy command here, e.g.:
+  #         # npm run deploy
+  #         echo "Rolled back to ${{ steps.prev_tag.outputs.tag }}"
+  #
+  #     - name: Notify rollback
+  #       if: vars.SLACK_WEBHOOK_URL != ''
+  #       run: |
+  #         curl -X POST -H 'Content-Type: application/json' \
+  #           -d "{\"text\":\"🚨 AUTO-ROLLBACK: Deployment to main failed health checks. Rolled back to ${{ steps.prev_tag.outputs.tag }}. Investigate immediately.\"}" \
+  #           "${{ vars.SLACK_WEBHOOK_URL }}"
+  #
+  #     - name: Create incident issue
+  #       env:
+  #         GH_TOKEN: ${{ github.token }}
+  #       run: |
+  #         gh issue create \
+  #           --title "INCIDENT: Auto-rollback triggered on $(date -u +%Y-%m-%d)" \
+  #           --label "incident,auto-detected" \
+  #           --body "## Auto-Rollback Triggered
+  #
+  #           **Commit**: ${{ github.sha }}
+  #           **Rolled back to**: ${{ steps.prev_tag.outputs.tag }}
+  #           **Time**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+  #
+  #           Health checks failed after deployment. Automatic rollback was performed.
+  #
+  #           ### Next Steps
+  #           - [ ] Investigate root cause
+  #           - [ ] Fix the issue on a branch
+  #           - [ ] Re-deploy after verification"
+
+  # Deployment notification
+  # Uncomment to send success/failure notifications
+  # notify:
+  #   runs-on: ubuntu-latest
+  #   needs: [build-and-test]
+  #   if: always() && github.ref == 'refs/heads/main'
+  #   steps:
+  #     - name: Notify success
+  #       if: needs.build-and-test.result == 'success' && vars.SLACK_WEBHOOK_URL != ''
+  #       run: |
+  #         curl -X POST -H 'Content-Type: application/json' \
+  #           -d "{\"text\":\"✅ CI passed on main: ${{ github.event.head_commit.message }} (${{ github.sha }})\"}" \
+  #           "${{ vars.SLACK_WEBHOOK_URL }}"
+  #
+  #     - name: Notify failure
+  #       if: needs.build-and-test.result == 'failure' && vars.SLACK_WEBHOOK_URL != ''
+  #       run: |
+  #         curl -X POST -H 'Content-Type: application/json' \
+  #           -d "{\"text\":\"❌ CI failed on main: ${{ github.event.head_commit.message }} (${{ github.sha }}). Check: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+  #           "${{ vars.SLACK_WEBHOOK_URL }}"
