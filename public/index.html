@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AgentStream — The AI House</title>
+  <title>Love Island: AI Villa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after {
       margin: 0;
@@ -15,35 +18,69 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: #000;
+      background: linear-gradient(160deg, #0a0520 0%, #1a0a3e 100%);
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       color: #fff;
     }
 
-    #canvas-container {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 1920px;
-      height: 1080px;
-      max-width: 100vw;
-      max-height: 100vh;
-      aspect-ratio: 16 / 9;
+    /* ─── Animations ─── */
+    @keyframes neonPulse {
+      0%, 100% { text-shadow: 0 0 10px #FF1493, 0 0 20px #FF1493, 0 0 40px #FF1493; }
+      50% { text-shadow: 0 0 5px #FF1493, 0 0 10px #FF1493, 0 0 20px #FF1493; }
     }
 
-    /* Scale canvas to fit viewport while keeping 16:9 */
-    @media (max-aspect-ratio: 16/9) {
-      #canvas-container {
-        width: 100vw;
-        height: auto;
-      }
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      15% { transform: scale(1.15); }
+      30% { transform: scale(1); }
+      45% { transform: scale(1.15); }
+      60% { transform: scale(1); }
     }
-    @media (min-aspect-ratio: 16/9) {
-      #canvas-container {
-        width: auto;
-        height: 100vh;
-      }
+
+    @keyframes slideDown {
+      0% { transform: translateY(-100%); opacity: 0; }
+      10% { transform: translateY(0); opacity: 1; }
+      90% { transform: translateY(0); opacity: 1; }
+      100% { transform: translateY(-100%); opacity: 0; }
+    }
+
+    @keyframes fadeInUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    @keyframes chatSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Main Layout ─── */
+    #app-layout {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    #canvas-section {
+      flex: 7;
+      position: relative;
+      min-width: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: calc(100vh * 16 / 9);
     }
 
     #canvas-container canvas {
@@ -52,35 +89,29 @@
       display: block;
     }
 
-    /* Overlay shared styles */
+    /* ─── HUD Overlay ─── */
     .overlay {
       position: absolute;
       pointer-events: none;
       z-index: 10;
     }
+    .overlay * { pointer-events: auto; }
 
-    .overlay * {
-      pointer-events: auto;
-    }
-
-    /* HUD — top bar */
     #hud {
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 72px;
+      top: 0; left: 0; right: 0;
+      height: 62px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 24px;
-      background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
-      font-size: 14px;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(10,5,32,0.85) 0%, transparent 100%);
+      font-size: 13px;
     }
 
     #hud-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .live-indicator {
@@ -88,214 +119,1012 @@
       align-items: center;
       gap: 6px;
       font-weight: 700;
-      font-size: 16px;
+      font-size: 14px;
       letter-spacing: 1px;
       text-transform: uppercase;
+      color: #FF1493;
     }
 
-    .live-dot {
-      width: 12px;
-      height: 12px;
-      background: #e74c3c;
-      border-radius: 50%;
-      animation: pulse 1.5s ease-in-out infinite;
+    .live-heart {
+      font-size: 18px;
+      animation: heartbeat 1.2s ease-in-out infinite;
+      filter: drop-shadow(0 0 6px #FF1493);
     }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.8); }
+    #episode-counter {
+      font-size: 13px;
+      font-weight: 600;
+      color: #FFD700;
+      letter-spacing: 1px;
+    }
+
+    #day-cycle {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      font-weight: 500;
     }
 
     #hud-center {
-      font-size: 30px;
-      font-weight: 800;
-      letter-spacing: 3px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
       text-align: center;
       line-height: 1.2;
+      animation: neonPulse 3s ease-in-out infinite;
     }
 
     #hud-center .subtitle {
-      font-size: 14px;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 11px;
       font-weight: 400;
       letter-spacing: 0.5px;
       text-transform: none;
-      opacity: 0.6;
+      opacity: 0.5;
+      text-shadow: none;
     }
 
     #hud-right {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 15px;
+      gap: 8px;
     }
 
-    .char-status {
+    #pause-btn, #recast-btn {
+      padding: 5px 14px;
+      background: rgba(255,20,147,0.12);
+      border: 1px solid rgba(255,20,147,0.3);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #pause-btn:hover, #recast-btn:hover { background: rgba(255,20,147,0.25); }
+    #pause-btn.paused { background: rgba(255,107,107,0.3); border-color: #FF6B6B; }
+    #recast-btn { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.3); }
+    #recast-btn:hover { background: rgba(0,212,255,0.25); }
+
+    /* ─── Camera Controls ─── */
+    #camera-bar {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      display: flex;
+      gap: 6px;
+      pointer-events: auto;
+    }
+    .cam-btn {
+      padding: 5px 14px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      color: rgba(255,255,255,0.6);
+      font-size: 11px;
+      font-family: 'Courier New', monospace;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    .cam-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .cam-btn.active { background: rgba(255,20,147,0.3); border-color: #FF1493; color: #fff; }
+
+    /* ─── Scan-line & Vignette Overlay ─── */
+    #scanline-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 3px,
+          rgba(0,0,0,0.04) 3px,
+          rgba(0,0,0,0.04) 4px
+        );
+    }
+    #vignette-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 6;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%);
+    }
+
+    /* ─── Text Notification Banner ─── */
+    #text-notification {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: linear-gradient(135deg, #FF1493, #FF6B6B);
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      text-align: center;
+      padding: 16px 20px;
+      text-transform: uppercase;
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    #text-notification.visible {
+      animation: slideDown 4s ease-in-out forwards;
+    }
+
+    /* ─── Confessional Panel ─── */
+    #confessional-panel {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: 380px;
+      z-index: 20;
+      background: linear-gradient(145deg, rgba(26,10,62,0.94), rgba(60,10,50,0.94));
+      border: 1px solid rgba(255,20,147,0.25);
+      border-radius: 16px;
+      padding: 20px 22px;
+      box-shadow: 0 8px 32px rgba(255,20,147,0.15), 0 0 60px rgba(255,20,147,0.05);
+      transition: transform 0.5s ease, opacity 0.5s ease;
+      pointer-events: none;
+    }
+    #confessional-panel.confessional-hidden {
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+    }
+    #confessional-panel.confessional-visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .confessional-header {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .confessional-label {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #FF6B6B;
+      background: rgba(255,107,107,0.15);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .confessional-name {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .confessional-body {
+      position: relative;
+      padding: 0 8px;
+    }
+    .confessional-quote {
+      font-family: Georgia, serif;
+      font-size: 48px;
+      color: rgba(255,20,147,0.2);
+      line-height: 0;
+      position: absolute;
+      top: 14px;
+      left: -6px;
+    }
+    .confessional-quote.quote-end {
+      position: absolute;
+      bottom: -10px;
+      right: -2px;
+      left: auto;
+      top: auto;
+    }
+    #confessional-text {
+      font-size: 16px;
+      font-style: italic;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.9);
+      margin: 4px 0;
+      padding-left: 16px;
     }
 
-    .char-status .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    /* Debug overlay */
+    /* ─── Debug Overlay ─── */
     #debug-overlay {
-      top: 60px;
-      left: 12px;
-      width: 380px;
-      max-height: calc(100% - 120px);
+      top: 62px; left: 12px;
+      width: 340px;
+      max-height: calc(100% - 76px);
       overflow-y: auto;
-      background: rgba(0, 0, 0, 0.85);
-      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(10, 5, 32, 0.92);
+      border: 1px solid rgba(255,20,147,0.15);
       border-radius: 8px;
-      padding: 16px;
+      padding: 12px;
       font-family: 'Courier New', monospace;
-      font-size: 12px;
-      line-height: 1.6;
+      font-size: 11px;
+      line-height: 1.5;
       display: none;
     }
-
-    #debug-overlay.visible {
-      display: block;
+    #debug-overlay.visible { display: block; }
+    #debug-overlay h3 { color: #00D4FF; margin-bottom: 6px; font-size: 12px; }
+    .debug-char {
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255,20,147,0.1);
     }
 
-    #debug-overlay h3 {
-      color: #0f0;
-      margin-bottom: 8px;
+    /* ─── Chat Sidebar ─── */
+    #chat-sidebar {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+      background: #120824;
+      border-left: 1px solid rgba(255,20,147,0.15);
+      box-shadow: -4px 0 30px rgba(255,20,147,0.06);
+      min-width: 280px;
+      max-width: 420px;
+    }
+
+    .sidebar-title {
+      padding: 14px 16px 10px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #FF1493;
+      text-shadow: 0 0 10px #FF1493, 0 0 20px #FF1493, 0 0 40px #FF1493;
+      border-bottom: 1px solid rgba(255,20,147,0.15);
+    }
+
+    /* ─── Couple Status ─── */
+    #couple-status {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255,20,147,0.1);
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    /* ─── Character Cards ─── */
+    #character-cards {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-bottom: 1px solid rgba(255,20,147,0.15);
+    }
+
+    .char-card {
+      padding: 8px 12px;
+      background: rgba(255,20,147,0.08);
+      border: 1px solid rgba(255,20,147,0.12);
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .char-card:hover {
+      background: rgba(255,20,147,0.14);
+    }
+
+    .char-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .char-card-name {
+      font-weight: 700;
       font-size: 13px;
     }
 
-    .debug-char {
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+    .char-card-mood { font-size: 16px; }
+
+    .char-card-zone {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 2px;
     }
 
-    /* Operator panel */
-    #operator-panel {
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 520px;
-      background: rgba(15, 15, 25, 0.95);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 12px;
-      padding: 24px;
-      display: none;
-      z-index: 20;
+    .char-card-couple {
+      font-size: 11px;
+      margin-top: 3px;
+    }
+    .char-card-couple { color: #FF1493; }
+    .char-card-single { color: rgba(255,255,255,0.35); font-style: italic; }
+
+    /* ─── Chat Feed ─── */
+    #chat-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      scroll-behavior: smooth;
     }
 
-    #operator-panel.visible {
+    #chat-feed::-webkit-scrollbar { width: 4px; }
+    #chat-feed::-webkit-scrollbar-track { background: transparent; }
+    #chat-feed::-webkit-scrollbar-thumb {
+      background: rgba(255,20,147,0.25);
+      border-radius: 2px;
+    }
+
+    .chat-msg {
+      font-size: 13px;
+      line-height: 1.4;
+      padding: 4px 8px;
+      border-radius: 6px;
+      animation: chatSlideUp 0.3s ease-out;
+    }
+
+    .msg-name {
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .msg-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+    }
+
+    .tag-speak { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); }
+    .tag-confront { background: rgba(231,76,60,0.25); color: #FF6B6B; font-weight: 800; }
+    .tag-gossip { background: rgba(155,89,182,0.25); color: #c89efc; }
+    .tag-flirt {
+      background: rgba(255,20,147,0.2);
+      color: #FF69B4;
+      text-shadow: 0 0 6px rgba(255,20,147,0.5);
+    }
+    .tag-scheme { background: rgba(255,215,0,0.2); color: #FFD700; }
+    .tag-interact { background: rgba(0,212,255,0.15); color: #00D4FF; }
+    .tag-confessional { background: rgba(255,107,107,0.2); color: #FF6B6B; font-style: italic; }
+    .tag-ceremony { background: rgba(255,215,0,0.25); color: #FFD700; font-weight: 800; }
+
+    .msg-text {
+      color: rgba(255,255,255,0.85);
+    }
+
+    .chat-system {
+      padding: 2px 8px;
+    }
+
+    .msg-system {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      font-style: italic;
+    }
+
+    .msg-drama {
+      font-size: 13px;
+      color: #FF6B6B;
+      font-weight: 600;
+      padding: 4px 0;
+    }
+
+    .msg-episode {
+      font-size: 11px;
+      color: #FFD700;
+      text-align: center;
       display: block;
+      padding: 6px 0;
+      opacity: 0.6;
     }
 
-    #operator-panel h2 {
-      font-size: 16px;
-      margin-bottom: 16px;
-      color: #aaa;
+    .msg-operator {
+      font-size: 12px;
+      color: #FFD700;
       font-weight: 600;
     }
 
-    #operator-input {
-      width: 100%;
-      padding: 12px 16px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.2);
+    /* Confessional chat message */
+    .chat-confessional {
+      margin-left: 12px;
+      padding: 6px 10px;
+      font-style: italic;
+      border-left: 3px solid #FF6B6B;
+      background: rgba(255,107,107,0.06);
+      border-radius: 0 6px 6px 0;
+    }
+
+    /* Ceremony chat message */
+    .chat-ceremony {
+      text-align: center;
+      color: #FFD700;
+      font-weight: 700;
+      padding: 8px 10px;
+      background: rgba(255,215,0,0.06);
+      border: 1px solid rgba(255,215,0,0.15);
+      border-radius: 8px;
+    }
+
+    .msg-ceremony {
+      color: #FFD700;
+      font-weight: 700;
+    }
+
+    .msg-confessional-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #FF6B6B;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+
+    .msg-confessional-text {
+      font-style: italic;
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* World event chat message */
+    .chat-world-event {
+      text-align: center;
+      color: #FF6B6B;
+      font-weight: 600;
+      padding: 6px 10px;
+      background: rgba(255,107,107,0.08);
+      border-radius: 8px;
+    }
+
+    /* ─── Chat Input ─── */
+    #chat-input-area {
+      padding: 10px;
+      border-top: 1px solid rgba(255,20,147,0.15);
+      display: flex;
+      gap: 8px;
+      background: rgba(18,8,36,0.8);
+    }
+
+    #chat-input {
+      flex: 1;
+      padding: 8px 12px;
+      background: rgba(255,20,147,0.06);
+      border: 1px solid rgba(255,20,147,0.2);
       border-radius: 8px;
       color: #fff;
-      font-size: 15px;
+      font-size: 13px;
       font-family: inherit;
       outline: none;
+      transition: border-color 0.2s;
+    }
+    #chat-input:focus { border-color: #FF1493; box-shadow: 0 0 12px rgba(255,20,147,0.15); }
+    #chat-input::placeholder { color: rgba(255,255,255,0.25); }
+
+    #chat-send {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, #FF1493, #FF6B6B);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+    #chat-send:hover {
+      transform: scale(1.04);
+      box-shadow: 0 2px 16px rgba(255,20,147,0.35);
     }
 
-    #operator-input:focus {
-      border-color: rgba(255,255,255,0.4);
+    /* ─── Setup Modal ─── */
+    #setup-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,5,32,0.92);
+      backdrop-filter: blur(14px);
+    }
+    #setup-modal.visible { display: flex; }
+
+    .setup-content {
+      background: linear-gradient(160deg, #1a0a3e, #2a0e3e);
+      border: 1px solid rgba(255,20,147,0.2);
+      border-radius: 20px;
+      padding: 36px;
+      width: 90%;
+      max-width: 940px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 0 80px rgba(255,20,147,0.1), 0 0 200px rgba(255,20,147,0.04);
     }
 
-    #operator-submit {
-      margin-top: 12px;
-      padding: 10px 24px;
-      background: #3498db;
+    .setup-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      text-align: center;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #FF1493, #FFD700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .setup-subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.45);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    .setup-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .setup-card {
+      background: rgba(255,20,147,0.06);
+      border: 1px solid rgba(255,20,147,0.15);
+      border-radius: 14px;
+      padding: 18px;
+      transition: border-color 0.2s;
+    }
+    .setup-card:hover {
+      border-color: rgba(255,20,147,0.3);
+    }
+
+    .setup-card h3 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #FF1493;
+    }
+
+    .setup-card label {
+      display: block;
+      font-size: 11px;
+      color: rgba(255,255,255,0.45);
+      margin-bottom: 4px;
+      margin-top: 10px;
+      letter-spacing: 0.3px;
+    }
+
+    .setup-card input[type="text"],
+    .setup-card textarea,
+    .setup-card select {
+      width: 100%;
+      padding: 7px 11px;
+      background: rgba(255,20,147,0.06);
+      border: 1px solid rgba(255,20,147,0.18);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .setup-card input:focus, .setup-card textarea:focus, .setup-card select:focus {
+      border-color: #FF1493;
+      box-shadow: 0 0 10px rgba(255,20,147,0.12);
+    }
+
+    .setup-card textarea {
+      height: 60px;
+      resize: none;
+    }
+
+    .setup-card input[type="color"] {
+      width: 36px;
+      height: 28px;
       border: none;
       border-radius: 6px;
-      color: #fff;
-      font-size: 14px;
-      font-weight: 600;
       cursor: pointer;
+      background: none;
     }
 
-    #operator-submit:hover {
-      background: #2980b9;
+    .color-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
 
-    /* Ticker — bottom */
-    #ticker {
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 36px;
-      background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    .skin-tone-group {
+      display: flex;
+      gap: 4px;
+    }
+
+    .skin-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .skin-btn:hover { border-color: rgba(255,20,147,0.5); }
+    .skin-btn.selected { border-color: #FF1493; box-shadow: 0 0 8px rgba(255,20,147,0.3); }
+
+    /* ─── Archetype Quick-Select ─── */
+    .archetype-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+
+    .archetype-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(255,20,147,0.25);
+      border-radius: 20px;
+      background: rgba(255,20,147,0.08);
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .archetype-btn:hover {
+      background: rgba(255,20,147,0.2);
+      border-color: #FF1493;
+      color: #fff;
+    }
+    .archetype-btn.active {
+      background: rgba(255,20,147,0.3);
+      border-color: #FF1493;
+      color: #fff;
+    }
+
+    #start-show-btn {
+      display: block;
+      margin: 0 auto;
+      padding: 15px 52px;
+      background: linear-gradient(135deg, #FF1493, #FF6B6B);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-transform: uppercase;
+    }
+    #start-show-btn:hover {
+      transform: scale(1.04);
+      box-shadow: 0 6px 30px rgba(255,20,147,0.4);
+    }
+
+    /* ─── Voting Poll ─── */
+    #poll-panel {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,20,147,0.15);
+      display: none;
+    }
+    #poll-panel.active { display: block; }
+
+    .poll-question {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #FFD700;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .poll-options {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .poll-option {
       display: flex;
       align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: rgba(255,20,147,0.06);
+      border: 1px solid rgba(255,20,147,0.15);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .poll-option:hover {
+      background: rgba(255,20,147,0.15);
+      border-color: rgba(255,20,147,0.3);
+    }
+    .poll-option.voted {
+      border-color: #FF1493;
+      background: rgba(255,20,147,0.2);
+    }
+
+    .poll-option-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .poll-option-bar {
+      flex: 2;
+      height: 8px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 4px;
       overflow: hidden;
-      padding: 0 16px;
     }
 
-    #ticker-content {
-      display: flex;
-      gap: 48px;
-      white-space: nowrap;
-      animation: scroll-left 30s linear infinite;
-      font-size: 15px;
-      color: rgba(255,255,255,0.7);
+    .poll-option-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #FF1493, #FFD700);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      width: 0%;
     }
 
-    @keyframes scroll-left {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
+    .poll-option-count {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      min-width: 24px;
+      text-align: right;
     }
 
-    .ticker-item {
-      flex-shrink: 0;
+    .poll-type-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .poll-type-dump { background: rgba(231,76,60,0.25); color: #FF6B6B; }
+    .poll-type-couple { background: rgba(255,20,147,0.25); color: #FF69B4; }
+    .poll-type-custom { background: rgba(255,215,0,0.2); color: #FFD700; }
+
+    .poll-close-btn {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 5px;
+      background: rgba(255,215,0,0.15);
+      border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 6px;
+      color: #FFD700;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .poll-close-btn:hover { background: rgba(255,215,0,0.25); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 900px) {
+      .setup-cards { grid-template-columns: 1fr; }
+      #chat-sidebar { min-width: 220px; max-width: 280px; }
     }
   </style>
 </head>
 <body>
-  <div id="canvas-container">
-    <!-- PixiJS canvas will be appended here -->
+  <div id="app-layout">
+    <!-- Canvas Section -->
+    <div id="canvas-section">
+      <div id="canvas-container">
+        <!-- PixiJS canvas inserted here -->
 
-    <div id="hud" class="overlay">
-      <div id="hud-left">
-        <div class="live-indicator">
-          <span class="live-dot"></span>
-          <span>LIVE</span>
+        <!-- Text Notification Banner -->
+        <div id="text-notification">I'VE GOT A TEXT!</div>
+
+        <div id="hud" class="overlay">
+          <div id="hud-left">
+            <div class="live-indicator">
+              <span class="live-heart">&#10084;</span>
+              <span>LIVE</span>
+            </div>
+            <span id="day-cycle">Day 1 &mdash; Morning</span>
+            <span id="episode-counter">&#127796; Episode 1</span>
+          </div>
+          <div id="hud-center">
+            <div>LOVE ISLAND: AI VILLA</div>
+            <div class="subtitle">The ultimate AI dating experiment</div>
+          </div>
+          <div id="hud-right">
+            <button id="recast-btn">&#127922; Recast</button>
+            <button id="pause-btn">&#9208; Pause</button>
+          </div>
+        </div>
+
+        <div id="debug-overlay" class="overlay"></div>
+
+        <!-- Scan-line & Vignette overlays -->
+        <div id="scanline-overlay"></div>
+        <div id="vignette-overlay"></div>
+
+        <!-- Camera Mode Bar -->
+        <div id="camera-bar">
+          <button class="cam-btn active" data-mode="quad">QUAD VIEW</button>
+          <button class="cam-btn" data-mode="single" data-room="Kitchen">CAM 1</button>
+          <button class="cam-btn" data-mode="single" data-room="Living Room">CAM 2</button>
+          <button class="cam-btn" data-mode="single" data-room="Bedroom">CAM 3</button>
+          <button class="cam-btn" data-mode="single" data-room="Bathroom">CAM 4</button>
+          <button class="cam-btn" data-mode="auto">AUTO</button>
+        </div>
+
+        <!-- Confessional Panel -->
+        <div id="confessional-panel" class="confessional-hidden">
+          <div class="confessional-header">
+            <span class="confessional-label">BEACH HUT</span>
+            <span class="confessional-name" id="confessional-name"></span>
+          </div>
+          <div class="confessional-body">
+            <span class="confessional-quote">&ldquo;</span>
+            <p id="confessional-text"></p>
+            <span class="confessional-quote quote-end">&rdquo;</span>
+          </div>
         </div>
       </div>
-      <div id="hud-center">
-        <div>THE AI HOUSE</div>
-        <div class="subtitle">AI characters live together. Watch what happens.</div>
+    </div>
+
+    <!-- Chat Sidebar -->
+    <div id="chat-sidebar">
+      <div class="sidebar-title">VILLA CHAT</div>
+      <div id="poll-panel"></div>
+      <div id="couple-status"></div>
+      <div id="character-cards"></div>
+      <div id="chat-feed"></div>
+      <div id="chat-input-area">
+        <input id="chat-input" type="text" placeholder="Send a producer directive..." autocomplete="off" />
+        <button id="chat-send">Send</button>
       </div>
-      <div id="hud-right"></div>
-    </div>
-
-    <div id="debug-overlay" class="overlay"></div>
-
-    <div id="operator-panel" class="overlay">
-      <h2>Operator Console</h2>
-      <input id="operator-input" type="text" placeholder="Send a directive to the house..." autocomplete="off" />
-      <button id="operator-submit">Send</button>
-    </div>
-
-    <div id="ticker" class="overlay">
-      <div id="ticker-content"></div>
     </div>
   </div>
+
+  <!-- Setup Modal -->
+  <div id="setup-modal">
+    <div class="setup-content">
+      <div class="setup-title">CAST YOUR ISLANDERS</div>
+      <div class="setup-subtitle">Choose who enters the villa for the summer of love</div>
+
+      <div class="setup-cards">
+        <div class="setup-card">
+          <h3>Islander 1</h3>
+          <label>Name</label>
+          <input type="text" class="char-name-input" placeholder="Alex" />
+          <label>Colors</label>
+          <div class="color-row">
+            <label style="margin:0">Outfit</label>
+            <input type="color" class="char-color-input" value="#E74C3C" />
+            <label style="margin:0">Hair</label>
+            <input type="color" class="hair-color-input" value="#4A3728" />
+          </div>
+          <label>Hair Style</label>
+          <select class="hair-style-select"></select>
+          <label>Skin Tone</label>
+          <div class="skin-tone-group"></div>
+          <label>Accessory</label>
+          <select class="accessory-select">
+            <option value="">None</option>
+            <option value="glasses">Glasses</option>
+            <option value="hat">Hat</option>
+            <option value="earring">Earring</option>
+          </select>
+          <label>Personality</label>
+          <div class="archetype-buttons">
+            <button type="button" class="archetype-btn" data-archetype="bombshell">Bombshell</button>
+            <button type="button" class="archetype-btn" data-archetype="loyal">Loyal One</button>
+            <button type="button" class="archetype-btn" data-archetype="player">Game Player</button>
+            <button type="button" class="archetype-btn" data-archetype="drama">Drama Magnet</button>
+            <button type="button" class="archetype-btn" data-archetype="romantic">Hopeless Romantic</button>
+          </div>
+          <textarea class="personality-input" placeholder="What kind of islander are they?"></textarea>
+        </div>
+
+        <div class="setup-card">
+          <h3>Islander 2</h3>
+          <label>Name</label>
+          <input type="text" class="char-name-input" placeholder="Maya" />
+          <label>Colors</label>
+          <div class="color-row">
+            <label style="margin:0">Outfit</label>
+            <input type="color" class="char-color-input" value="#2ECC71" />
+            <label style="margin:0">Hair</label>
+            <input type="color" class="hair-color-input" value="#111111" />
+          </div>
+          <label>Hair Style</label>
+          <select class="hair-style-select"></select>
+          <label>Skin Tone</label>
+          <div class="skin-tone-group"></div>
+          <label>Accessory</label>
+          <select class="accessory-select">
+            <option value="">None</option>
+            <option value="glasses">Glasses</option>
+            <option value="hat">Hat</option>
+            <option value="earring">Earring</option>
+          </select>
+          <label>Personality</label>
+          <div class="archetype-buttons">
+            <button type="button" class="archetype-btn" data-archetype="bombshell">Bombshell</button>
+            <button type="button" class="archetype-btn" data-archetype="loyal">Loyal One</button>
+            <button type="button" class="archetype-btn" data-archetype="player">Game Player</button>
+            <button type="button" class="archetype-btn" data-archetype="drama">Drama Magnet</button>
+            <button type="button" class="archetype-btn" data-archetype="romantic">Hopeless Romantic</button>
+          </div>
+          <textarea class="personality-input" placeholder="What kind of islander are they?"></textarea>
+        </div>
+
+        <div class="setup-card">
+          <h3>Islander 3</h3>
+          <label>Name</label>
+          <input type="text" class="char-name-input" placeholder="Jordan" />
+          <label>Colors</label>
+          <div class="color-row">
+            <label style="margin:0">Outfit</label>
+            <input type="color" class="char-color-input" value="#3498DB" />
+            <label style="margin:0">Hair</label>
+            <input type="color" class="hair-color-input" value="#222222" />
+          </div>
+          <label>Hair Style</label>
+          <select class="hair-style-select"></select>
+          <label>Skin Tone</label>
+          <div class="skin-tone-group"></div>
+          <label>Accessory</label>
+          <select class="accessory-select">
+            <option value="">None</option>
+            <option value="glasses">Glasses</option>
+            <option value="hat">Hat</option>
+            <option value="earring">Earring</option>
+          </select>
+          <label>Personality</label>
+          <div class="archetype-buttons">
+            <button type="button" class="archetype-btn" data-archetype="bombshell">Bombshell</button>
+            <button type="button" class="archetype-btn" data-archetype="loyal">Loyal One</button>
+            <button type="button" class="archetype-btn" data-archetype="player">Game Player</button>
+            <button type="button" class="archetype-btn" data-archetype="drama">Drama Magnet</button>
+            <button type="button" class="archetype-btn" data-archetype="romantic">Hopeless Romantic</button>
+          </div>
+          <textarea class="personality-input" placeholder="What kind of islander are they?"></textarea>
+        </div>
+      </div>
+
+      <button id="start-show-btn">ENTER THE VILLA &#127796;</button>
+    </div>
+  </div>
+
+  <!-- Archetype quick-fill script -->
+  <script>
+    const archetypePresets = {
+      bombshell: "Stunning and knows it. Turns heads the moment they walk in. Confident, flirty, and always the centre of attention. Not afraid to step on toes to get what they want.",
+      loyal: "Ride or die once they find their person. Genuine, caring, and hates game-playing. Will pull someone for a chat if they feel disrespected. Values honesty above all.",
+      player: "Strategic and calculating. Always has a backup plan and keeps their options open. Charming on the surface but always thinking three moves ahead. Here to win.",
+      drama: "Lives for confrontation and never backs down. Has an opinion on everything and everyone. Somehow always in the middle of every argument. Entertaining but exhausting.",
+      romantic: "Falls hard and fast. Writes love poems at 2am, plans grand gestures, and wears their heart on their sleeve. Gets hurt easily but never stops believing in love."
+    };
+
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('archetype-btn')) {
+        const card = e.target.closest('.setup-card');
+        const textarea = card.querySelector('.personality-input');
+        const archetype = e.target.dataset.archetype;
+        card.querySelectorAll('.archetype-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        textarea.value = archetypePresets[archetype] || '';
+      }
+    });
+  </script>
 
   <script type="module" src="js/main.js"></script>
 </body>
