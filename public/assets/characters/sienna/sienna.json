@@ -1,0 +1,18 @@
+{
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "animations": {
+    "idle": {
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "oneShot": false
+    },
+    "walk": {
+      "frames": 8,
+      "fps": 12,
+      "loop": true,
+      "oneShot": false
+    }
+  }
+}

@@ -129,30 +129,35 @@ function buildPrompt(charId, animName) {
     .map((desc, i) => `- Frame ${i + 1}: ${desc}`)
     .join('\n');
 
-  return `Create a 2D sprite sheet as a single horizontal strip PNG image with transparent background.
-The strip contains exactly ${anim.frames} frames, each 128x128 pixels, for a total image size of ${totalWidth}x128 pixels.
+  return `Create a 2D sprite sheet as a single horizontal strip across the top of the image with transparent background.
+The strip contains exactly ${anim.frames} character poses arranged in a single row from left to right, evenly spaced across the full width of the image.
+Each character pose should be the same size, showing the complete full body from head to feet.
+Leave the bottom portion of the image empty/transparent — all characters go in one row along the top.
 
 Character: ${charId.charAt(0).toUpperCase() + charId.slice(1)} — ${charDesc}
 
 Animation: ${anim.description}.
 ${frameList}
 
-Style: Clean cartoon illustration with smooth lines, cel-shading, and anti-aliased edges. Side-view perspective. High detail, smooth gradients, clean outlines. Consistent character design across all frames. Love Island summer aesthetic. No background — transparent PNG only.`;
+Style: Clean 2D cartoon/pixel-art, side-view perspective, consistent character design across all frames. Love Island summer aesthetic. Full-body character in each frame with head, torso, and feet all visible. No background — transparent PNG only.`;
 }
 
 async function generateSpriteSheet(charId, animName) {
+  const sharp = require('sharp');
   const anim = ANIMATION_DEFS[animName];
   const totalWidth = anim.frames * 128;
+  // gpt-image-1 only supports fixed sizes; use widest landscape option
+  const apiSize = '1536x1024';
   const prompt = buildPrompt(charId, animName);
 
-  console.log(`  Generating: ${charId}/${animName} (${anim.frames} frames, ${totalWidth}x128)...`);
+  console.log(`  Generating: ${charId}/${animName} (${anim.frames} frames, requesting ${apiSize})...`);
   const startTime = Date.now();
 
   const response = await openai.images.generate({
     model: 'gpt-image-1',
     prompt,
     n: 1,
-    size: '1024x1024', // gpt-image-1 generates square, we'll validate/resize
+    size: apiSize,
     quality: 'high',
     background: 'transparent',
   });
@@ -169,36 +174,44 @@ async function generateSpriteSheet(charId, animName) {
 
   if (!buffer) throw new Error('No image data returned');
 
-  // Save the raw output
   const charDir = path.join(__dirname, '..', 'public', 'assets', 'characters', charId);
   fs.mkdirSync(charDir, { recursive: true });
 
-  const outputPath = path.join(charDir, `${animName}.png`);
-  fs.writeFileSync(outputPath, buffer);
+  // Save raw strip for debugging
+  const rawPath = path.join(charDir, `${animName}_raw.png`);
+  fs.writeFileSync(rawPath, buffer);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`  Saved ${outputPath} (${elapsed}s, ${(buffer.length / 1024).toFixed(0)}KB)`);
+  console.log(`  Raw strip saved: ${rawPath} (${elapsed}s, ${(buffer.length / 1024).toFixed(0)}KB)`);
 
-  // Validate dimensions using sharp if available
-  try {
-    const sharp = require('sharp');
-    const meta = await sharp(buffer).metadata();
-    console.log(`  Dimensions: ${meta.width}x${meta.height}`);
+  // Slice the top row into equal cells — prompt places all frames in one row across the top
+  const meta = await sharp(buffer).metadata();
+  const cellW = Math.floor(meta.width / anim.frames);
+  // Use top half of image height as the cell height (characters are in the top row)
+  const cellH = Math.floor(meta.height / 2);
+  console.log(`  Image: ${meta.width}x${meta.height}, extracting ${anim.frames} cells of ${cellW}x${cellH} from top row`);
 
-    if (meta.width !== totalWidth || meta.height !== 128) {
-      console.log(`  Resizing from ${meta.width}x${meta.height} to ${totalWidth}x128...`);
-      const resized = await sharp(buffer)
-        .resize(totalWidth, 128, { fit: 'fill' })
-        .png()
-        .toBuffer();
-      fs.writeFileSync(outputPath, resized);
-      console.log(`  Resized and saved (${(resized.length / 1024).toFixed(0)}KB)`);
-    } else {
-      console.log(`  Dimensions OK`);
-    }
-  } catch {
-    console.log('  (sharp not installed — skipping dimension validation. Run: npm install sharp)');
+  const frames = [];
+  for (let i = 0; i < anim.frames; i++) {
+    const cell = await sharp(buffer)
+      .extract({ left: i * cellW, top: 0, width: cellW, height: cellH })
+      .resize(128, 128, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png()
+      .toBuffer();
+    frames.push({ input: cell, left: i * 128, top: 0 });
   }
+
+  // Compose all frames into the final horizontal strip at exact dimensions
+  const strip = await sharp({
+    create: { width: totalWidth, height: 128, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite(frames)
+    .png()
+    .toBuffer();
+
+  const outputPath = path.join(charDir, `${animName}.png`);
+  fs.writeFileSync(outputPath, strip);
+  console.log(`  Strip saved: ${outputPath} (${totalWidth}x128, ${(strip.length / 1024).toFixed(0)}KB)`);
 
   return outputPath;
 }

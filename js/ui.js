@@ -7,6 +7,19 @@ let _characters = [];
 const activeBubbles = [];
 const MAX_CHAT_MESSAGES = 80;
 
+// ─── Speech display (text bubbles + optional preset audio) ───
+let _ttsPaused = false;
+
+// Preset audio clips — played randomly when characters speak
+const PRESET_AUDIO_CLIPS = [
+  '/assets/audio/speech-female1.mp3',
+  '/assets/audio/speech-male1.mp3',
+  '/assets/audio/speech-female2.mp3',
+];
+let _audioAvailable = true; // set to false if audio files don't load
+let _lastAudioTime = 0;
+const AUDIO_COOLDOWN = 8000; // don't play audio more than every 8s
+
 // Love Island action tag display names
 const TAG_LABELS = {
   speak: 'CHAT',
@@ -26,8 +39,8 @@ export function initUI(app, characters) {
   _updateEpisodeCounter();
 
   // Chat feed events
-  eventBus.on('character:speak', ({ character, text }) => {
-    showSpeechBubble(character, text);
+  eventBus.on('character:speak', ({ character, text, audioUrl }) => {
+    showSpeechBubble(character, text, audioUrl);
     addChatMessage(character.name, text, 'speak', character.color);
   });
 
@@ -87,7 +100,7 @@ export function initUI(app, characters) {
   });
 
   // Confessional display
-  eventBus.on('confessional:show', ({ characterName, color, mood, confession, about }) => {
+  eventBus.on('confessional:show', ({ characterName, color, mood, confession, about, audioUrl }) => {
     _showConfessionalPanel(characterName, color, mood, confession, about);
     addChatMessage(characterName, confession, 'confessional', color);
   });
@@ -95,6 +108,10 @@ export function initUI(app, characters) {
   eventBus.on('confessional:hide', () => {
     _hideConfessionalPanel();
   });
+
+  // Pause/resume
+  eventBus.on('simulation:pause', () => { _ttsPaused = true; });
+  eventBus.on('simulation:resume', () => { _ttsPaused = false; });
 
   // Wire up chat input
   _initChatInput();
@@ -236,10 +253,56 @@ function _hideConfessionalPanel() {
   panel.classList.add('confessional-hidden');
 }
 
-export function showSpeechBubble(character, text) {
+export function showSpeechBubble(character, text, audioUrl = null) {
   if (!_app || !character.sprite) return;
 
-  // Only one speech bubble at a time — remove all existing ones
+  // Show text bubble above character
+  _showTextBubble(character, text);
+
+  // Play TTS audio if available, otherwise occasionally play a preset
+  if (audioUrl) {
+    _playTTSAudio(audioUrl);
+  } else {
+    _maybePlayPresetAudio();
+  }
+}
+
+let _ttsAudio = null;
+
+function _playTTSAudio(audioUrl) {
+  if (_ttsPaused) return;
+  try {
+    if (_ttsAudio) {
+      _ttsAudio.pause();
+      _ttsAudio = null;
+    }
+    _ttsAudio = new Audio(audioUrl);
+    _ttsAudio.volume = 0.6;
+    _ttsAudio.play().catch(() => {});
+    _ttsAudio.addEventListener('ended', () => { _ttsAudio = null; });
+    _lastAudioTime = Date.now();
+  } catch (_) {}
+}
+
+function _maybePlayPresetAudio() {
+  if (!_audioAvailable || _ttsPaused) return;
+  const now = Date.now();
+  if (now - _lastAudioTime < AUDIO_COOLDOWN) return;
+
+  // 30% chance to play audio on any speech
+  if (Math.random() > 0.3) return;
+
+  _lastAudioTime = now;
+  const clip = PRESET_AUDIO_CLIPS[Math.floor(Math.random() * PRESET_AUDIO_CLIPS.length)];
+  const audio = new Audio(clip);
+  audio.volume = 0.4;
+  audio.play().catch(() => { _audioAvailable = false; });
+}
+
+function _showTextBubble(character, text) {
+  if (!_app || !character.sprite) return;
+
+  // Remove existing
   for (const b of activeBubbles) {
     if (b.parent) b.parent.removeChild(b);
   }
@@ -248,46 +311,34 @@ export function showSpeechBubble(character, text) {
   const container = new PIXI.Container();
   const colorHex = character.color;
 
-  // Name tag
   const nameObj = new PIXI.Text({
     text: character.name,
     style: {
-      fontSize: 13,
-      fontWeight: '700',
+      fontSize: 13, fontWeight: '700',
       fontFamily: 'Segoe UI, system-ui, sans-serif',
-      fill: colorHex,
-      letterSpacing: 0.5,
+      fill: colorHex, letterSpacing: 0.5,
     },
   });
   nameObj.x = 14;
   nameObj.y = 8;
 
-  // Message text — modern chat style
   const textObj = new PIXI.Text({
     text,
     style: {
       fontSize: 15,
       fontFamily: 'Segoe UI, system-ui, sans-serif',
-      fill: 0xEEEEEE,
-      wordWrap: true,
-      wordWrapWidth: 300,
-      lineHeight: 21,
+      fill: 0xEEEEEE, wordWrap: true, wordWrapWidth: 300, lineHeight: 21,
     },
   });
   textObj.x = 14;
   textObj.y = 26;
 
-  const padX = 28;
-  const padY = 38;
-  const bw = Math.min(Math.max(textObj.width, nameObj.width) + padX, 360);
-  const bh = textObj.height + padY;
+  const bw = Math.min(Math.max(textObj.width, nameObj.width) + 28, 360);
+  const bh = textObj.height + 38;
 
   const bg = new PIXI.Graphics();
-  // Dark rounded bubble — modern iMessage/WhatsApp style
   bg.roundRect(0, 0, bw, bh, 16).fill({ color: 0x1E1E2E, alpha: 0.92 });
-  // Colored accent line at top
   bg.roundRect(0, 0, bw, 3, 2).fill({ color: colorHex, alpha: 0.8 });
-  // Pointer triangle
   bg.moveTo(bw / 2 - 6, bh).lineTo(bw / 2, bh + 8).lineTo(bw / 2 + 6, bh).closePath()
     .fill({ color: 0x1E1E2E, alpha: 0.92 });
 
@@ -297,8 +348,6 @@ export function showSpeechBubble(character, text) {
 
   container.x = character.sprite.x - bw / 2;
   container.y = character.sprite.y - 120 - bh;
-
-  // Keep on screen
   if (container.x < 10) container.x = 10;
   if (container.x + bw > 1910) container.x = 1910 - bw;
   if (container.y < 10) container.y = 10;
@@ -306,12 +355,17 @@ export function showSpeechBubble(character, text) {
   _app.stage.addChild(container);
   activeBubbles.push(container);
 
-  // Stay up for 10s so user can read
   setTimeout(() => {
     if (container.parent) container.parent.removeChild(container);
     const idx = activeBubbles.indexOf(container);
     if (idx !== -1) activeBubbles.splice(idx, 1);
-  }, 10000);
+  }, 8000);
+}
+
+function _removeBubble(container) {
+  if (container && container.parent) container.parent.removeChild(container);
+  const idx = activeBubbles.indexOf(container);
+  if (idx !== -1) activeBubbles.splice(idx, 1);
 }
 
 function _updateCharacterCards() {
